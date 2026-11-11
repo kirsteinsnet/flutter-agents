@@ -6,7 +6,8 @@
   "author": {
     "name": "ICI - Equipe Mobile"
   },
-  "repository": "https://gitlab-mobile.ici.tec.br/ici/gesis/copm/flutter-agents",
+  "homepage": "https://github.com/kirsteinsnet/flutter-agents",
+  "repository": "https://github.com/kirsteinsnet/flutter-agents",
   "keywords": ["flutter", "dart", "guidelines", "agents", "mvvm", "bloc"],
   "dependencies": [
     "dart-flutter@dart-flutter"

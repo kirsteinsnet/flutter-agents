@@ -17,7 +17,6 @@ Próximos agentes: spec, code review e distribuição (Firebase App Distribution
 ## Pré-requisitos
 
 - Claude Code instalado e autenticado.
-- Acesso de leitura a este repositório com as credenciais git da máquina (HTTPS ou SSH).
 - `dart` e `flutter` no `PATH` do shell que abre o Claude Code, para o Dart MCP server subir. Com FVM, adicione ao `~/.zshrc`:
 
   ```bash
@@ -33,8 +32,8 @@ Próximos agentes: spec, code review e distribuição (Firebase App Distribution
      "extraKnownMarketplaces": {
        "flutter-agents": {
          "source": {
-           "source": "git",
-           "url": "https://gitlab-mobile.ici.tec.br/ici/gesis/copm/flutter-agents.git"
+           "source": "github",
+           "repo": "kirsteinsnet/flutter-agents"
          }
        },
        "dart-flutter": {
