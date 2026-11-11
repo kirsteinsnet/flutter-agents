@@ -1,7 +1,7 @@
 {
   "name": "flutter-agents",
   "owner": {
-    "name": "ICI - Equipe Mobile"
+    "name": "Pedro Kirstein"
   },
   "description": "Marketplace interno da equipe mobile: diretrizes Flutter e agentes do Claude Code.",
   "allowCrossMarketplaceDependenciesOn": ["dart-flutter"],
