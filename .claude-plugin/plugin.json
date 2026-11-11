@@ -1,0 +1,14 @@
+{
+  "name": "flutter-agents",
+  "displayName": "Flutter Agents",
+  "version": "0.1.0",
+  "description": "Diretrizes de arquitetura Flutter da equipe e agentes do Claude Code que as aplicam (desenvolvimento; spec, code review e distribuição em breve). Usa as skills oficiais e o Dart MCP server do plugin dart-flutter.",
+  "author": {
+    "name": "ICI - Equipe Mobile"
+  },
+  "repository": "https://gitlab-mobile.ici.tec.br/ici/gesis/copm/flutter-agents",
+  "keywords": ["flutter", "dart", "guidelines", "agents", "mvvm", "bloc"],
+  "dependencies": [
+    "dart-flutter@dart-flutter"
+  ]
+}

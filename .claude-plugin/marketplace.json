@@ -1,0 +1,17 @@
+{
+  "name": "flutter-agents",
+  "owner": {
+    "name": "ICI - Equipe Mobile"
+  },
+  "description": "Marketplace interno da equipe mobile: diretrizes Flutter e agentes do Claude Code.",
+  "allowCrossMarketplaceDependenciesOn": ["dart-flutter"],
+  "plugins": [
+    {
+      "name": "flutter-agents",
+      "description": "Diretrizes de arquitetura Flutter da equipe e agentes que as aplicam.",
+      "category": "development",
+      "tags": ["flutter", "dart", "guidelines"],
+      "source": "./"
+    }
+  ]
+}
