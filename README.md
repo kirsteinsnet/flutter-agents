@@ -10,9 +10,11 @@ Ele trabalha junto com o plugin oficial [`dart-flutter`](https://github.com/flut
 |---|---|---|
 | [`flutter-guidelines`](skills/flutter-guidelines/SKILL.md) | Skill | Índice do guia: precedência, divergências intencionais em relação ao Flutter oficial, regras de bloqueio, mapa "tarefa → documento → skill oficial" e política de migração de legado. Usada por todos os agentes. |
 | [Guia completo](skills/flutter-guidelines/guide/README.md) | Documentação | 9 documentos: arquitetura, estado, componentização, rede, erros/Crashlytics, analytics, navegação, push, flavors. |
+| [`flutter-spec`](skills/flutter-spec/SKILL.md) | Skill | Escreve a spec de uma feature (produto + desenho técnico pelo guia) a partir de texto, link do Figma e contrato da API, **conversando** para fechar as lacunas. Commita a spec em `docs/specs/` na branch da feature. |
+| [`flutter-spec`](agents/flutter-spec.md) | Agente | Mesma spec, em modo **não interativo**: para entrada já completa ou para encadear com o `flutter-dev`. Lacunas viram "Perguntas em aberto" em vez de perguntas. |
 | [`flutter-dev`](agents/flutter-dev.md) | Agente | Implementa features, bugfixes e refatorações seguindo o guia, valida (format, analyze, testes) e faz commits atômicos numa branch de feature, sem push. |
 
-Próximos agentes: spec, code review e distribuição (Firebase App Distribution e lojas).
+Próximos agentes: code review e distribuição (Firebase App Distribution e lojas).
 
 ## Pré-requisitos
 
@@ -22,6 +24,28 @@ Próximos agentes: spec, code review e distribuição (Firebase App Distribution
   ```bash
   export PATH="$HOME/fvm/default/bin:$PATH"
   ```
+
+- MCP do Figma configurado, para gerar specs (ver abaixo).
+
+### MCP do Figma
+
+A skill e o agente `flutter-spec` leem as telas pelo link do Figma, usando o MCP oficial do Figma. O plugin **não** o declara: cada dev configura uma vez, no escopo de usuário. Sem ele, o `flutter-spec` para e pede a configuração (prints não substituem o link).
+
+Servidor remoto (não precisa do app desktop aberto):
+
+```bash
+claude mcp add --scope user --transport http figma https://mcp.figma.com/mcp
+```
+
+Depois, numa sessão do Claude Code no terminal, rode `/mcp`, escolha `figma` e autentique com a sua conta do Figma.
+
+Alternativa, servidor do app desktop (exige o Figma desktop aberto com o Dev Mode MCP server habilitado nas preferências):
+
+```bash
+claude mcp add --scope user --transport http figma-desktop http://127.0.0.1:3845/mcp
+```
+
+Confira com `claude mcp list` e abra uma sessão nova.
 
 ## Adicionar a um projeto
 
@@ -70,7 +94,25 @@ Próximos agentes: spec, code review e distribuição (Firebase App Distribution
 
 ## Usar
 
-Peça no Claude Code:
+### 1. Spec
+
+Conversando (recomendado para feature nova ou requisito vago):
+
+> /flutter-agents:flutter-spec tela de detalhe do pedido. Figma: <link>. API: `docs/api/order.json`
+
+A skill lê o projeto, o guia, o Figma e o contrato da API e pergunta uma coisa por vez até fechar as lacunas (estados de tela, campos opcionais, regras, navegação, analytics). Depois escreve `docs/specs/<slug>.md`, mostra um resumo e commita na branch `feature/<slug>`, sem push.
+
+Delegando (entrada já completa, ou encadeando com a implementação):
+
+> use o agente flutter-spec para gerar a spec do detalhe do pedido; Figma: <link>; API em `docs/api/order.json`; cancelamento só em pending
+
+O agente não pergunta: o que faltar vai para a seção "Perguntas em aberto" da spec, com a suposição adotada, e a spec fica como `rascunho`.
+
+A spec tem IDs rastreáveis (`RF-xx`, `RN-xx`, `CA-xx`) e fica versionada para auditoria. O esqueleto está em [`skills/flutter-spec/template.md`](skills/flutter-spec/template.md).
+
+### 2. Implementação
+
+Na mesma branch da spec, peça no Claude Code:
 
 > use o flutter-dev para implementar a tela de detalhe de pedidos conforme `docs/specs/order-detail.md`
 
@@ -102,8 +144,12 @@ claude plugin update flutter-agents@flutter-agents
   marketplace.json     # este repo também é o marketplace
 agents/
   flutter-dev.md
+  flutter-spec.md      # spec em modo não interativo
 skills/
   flutter-guidelines/
     SKILL.md           # índice do guia
     guide/             # guia completo (01..09 + README)
+  flutter-spec/
+    SKILL.md           # fluxo e regras da spec
+    template.md        # esqueleto da spec
 ```

@@ -80,6 +80,7 @@ Este guia é distribuído como parte do plugin `flutter-agents`, junto com a ski
 
 ---|---|
 | `.claude/skills/flutter-guidelines/SKILL.md` | Índice do guia: precedência, regras de bloqueio e mapa "tarefa → documento → skill oficial". Usado por todos os agentes. |
+| `.claude/skills/flutter-spec/` + `.claude/agents/flutter-spec.md` | Spec de feature (produto + desenho técnico pelo guia) a partir de texto, Figma e contrato da API, commitada em `docs/specs/`. |
 | `.claude/agents/flutter-dev.md` | Agente de desenvolvimento: implementa seguindo o guia, valida e faz commits atômicos numa branch de feature (sem push). |
 | `.claude/settings.json` | Declara o plugin oficial `dart-flutter` (skills Flutter/Dart + Dart MCP server). |
 
