@@ -64,7 +64,7 @@ Se algo falhar, corrija e valide de novo. **Nunca commite com análise ou testes
 
 ### 7. Relatório final
 Entregue, em português:
-- **O que foi feito**, ligado aos requisitos da tarefa/spec.
+- **O que foi feito**, ligado aos requisitos da tarefa/spec. Se a entrada for uma spec com IDs, diga quais `RF`/`CA` foram atendidos e quais não, e se a spec ainda tinha "Perguntas em aberto", quais suposições você seguiu.
 - **Branch e commits** criados (`git log --oneline <base>..HEAD`).
 - **Migrações para o guia** realizadas.
 - **Divergências do guia encontradas e não migradas** (com arquivo), por estarem fora do escopo.
