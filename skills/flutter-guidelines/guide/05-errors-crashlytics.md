@@ -1,36 +1,36 @@
-# 05 · Erros e Crashlytics
+# 05 · Errors and Crashlytics
 
-## Objetivo
+## Goal
 
-Garantir que todo erro: (1) vire uma `Failure` tipada com mensagem adequada ao usuário, (2) seja reportado ao Crashlytics **uma única vez**, com contexto útil e sem dados pessoais, e (3) nunca derrube a tela sem um estado de erro tratável.
+Ensure that every error: (1) becomes a typed `Failure` with a message suitable for the user, (2) is reported to Crashlytics **exactly once**, with useful context and no personal data, and (3) never brings down the screen without a handleable error state.
 
-Os handlers globais seguem a página oficial [Handling errors in Flutter](https://docs.flutter.dev/testing/errors). Entre camadas, este guia lança `Failure` em vez de retornar `Result<T>`; o motivo está em [04 · Diferença em relação ao guia oficial](04-requests-rede.md#diferença-em-relação-ao-guia-oficial).
+The global handlers follow the official page [Handling errors in Flutter](https://docs.flutter.dev/testing/errors). Between layers, this guide throws `Failure` instead of returning `Result<T>`; the reason is in [04 · Difference from the official guide](04-networking.md#difference-from-the-official-guide).
 
 ---
 
-## Caminho de um erro
+## Path of an error
 
 ```mermaid
 flowchart LR
-    Dio["DioException\nFormatException\nTypeError"] -->|safeCall| F["Failure tipada"]
-    F -->|lançada| M["ErrorHandlerMixin.handle\n(no Cubit)"]
+    Dio["DioException\nFormatException\nTypeError"] -->|safeCall| F["Typed Failure"]
+    F -->|thrown| M["ErrorHandlerMixin.handle\n(in the Cubit)"]
     M -->|shouldReport?| CR["CrashReporter\n→ Crashlytics"]
     M -->|onFailure| S["State.failure"]
     S --> UI["ErrorView / Toast\nfailure.userMessage"]
 
-    G["Erro não capturado\n(framework, zona, isolate)"] --> GH["Handlers globais"] --> CR
+    G["Uncaught error\n(framework, zone, isolate)"] --> GH["Global handlers"] --> CR
 ```
 
-| Onde | Faz | Não faz |
+| Where | Does | Does not |
 |---|---|---|
-| `safeCall` / repository | Converte em `Failure` | Reportar, mostrar mensagem |
-| `ErrorHandlerMixin` (Cubit) | Reporta (se `shouldReport`) e entrega a `Failure` ao State | Decidir texto de UI |
-| UI | Mostra `failure.userMessage` | Mostrar `error.toString()` |
-| Handlers globais | Reportam o que escapou de tudo | Substituir o tratamento local |
+| `safeCall` / repository | Converts into `Failure` | Report, show a message |
+| `ErrorHandlerMixin` (Cubit) | Reports (if `shouldReport`) and hands the `Failure` to the State | Decide UI text |
+| UI | Shows `failure.userMessage` | Show `error.toString()` |
+| Global handlers | Report whatever escaped everything else | Replace local handling |
 
 ---
 
-## Hierarquia de Failure
+## Failure hierarchy
 
 ```dart
 // lib/core/errors/failure.dart
@@ -40,20 +40,20 @@ sealed class Failure implements Exception {
   final Object? cause;
   final StackTrace? stackTrace;
 
-  /// Texto técnico para logs. Nunca exibido ao usuário.
+  /// Technical text for logs. Never shown to the user.
   final String? debugMessage;
 
-  /// Texto em pt_BR para o usuário.
+  /// User-facing text.
   String get userMessage;
 
-  /// Se deve ir para o Crashlytics. Falhas esperadas (sem internet) não vão.
+  /// Whether it should go to Crashlytics. Expected failures (no internet) do not.
   bool get shouldReport;
 }
 
 final class NetworkFailure extends Failure {
   const NetworkFailure({super.cause, super.stackTrace});
   @override
-  String get userMessage => 'Sem conexão com a internet. Verifique sua rede e tente novamente.';
+  String get userMessage => 'No internet connection. Check your network and try again.';
   @override
   bool get shouldReport => false;
 }
@@ -61,7 +61,7 @@ final class NetworkFailure extends Failure {
 final class TimeoutFailure extends Failure {
   const TimeoutFailure({super.cause, super.stackTrace});
   @override
-  String get userMessage => 'O serviço demorou para responder. Tente novamente em instantes.';
+  String get userMessage => 'The service took too long to respond. Try again in a moment.';
   @override
   bool get shouldReport => true;
 }
@@ -69,7 +69,7 @@ final class TimeoutFailure extends Failure {
 final class UnauthorizedFailure extends Failure {
   const UnauthorizedFailure({super.cause, super.stackTrace});
   @override
-  String get userMessage => 'Sua sessão expirou. Entre novamente para continuar.';
+  String get userMessage => 'Your session has expired. Sign in again to continue.';
   @override
   bool get shouldReport => false;
 }
@@ -78,7 +78,7 @@ final class NotFoundFailure extends Failure {
   const NotFoundFailure({super.cause, super.stackTrace, this.backendMessage});
   final String? backendMessage;
   @override
-  String get userMessage => backendMessage ?? 'Não encontramos o que você procurou.';
+  String get userMessage => backendMessage ?? "We couldn't find what you were looking for.";
   @override
   bool get shouldReport => false;
 }
@@ -104,7 +104,7 @@ final class ServerFailure extends Failure {
   final String? backendMessage;
   @override
   String get userMessage =>
-      backendMessage ?? 'Não foi possível concluir agora. Tente novamente mais tarde.';
+      backendMessage ?? "We couldn't complete this right now. Try again later.";
   @override
   bool get shouldReport => statusCode == null || statusCode! >= 500;
 }
@@ -112,13 +112,13 @@ final class ServerFailure extends Failure {
 final class UnexpectedFailure extends Failure {
   const UnexpectedFailure({super.cause, super.stackTrace, super.debugMessage});
   @override
-  String get userMessage => 'Algo deu errado. Tente novamente.';
+  String get userMessage => 'Something went wrong. Try again.';
   @override
   bool get shouldReport => true;
 }
 ```
 
-### Mapeando DioException
+### Mapping DioException
 
 ```dart
 // lib/core/errors/failure_mapper.dart
@@ -137,7 +137,7 @@ abstract final class FailureMapper {
       _ => switch (status) {
           401 || 403 => UnauthorizedFailure(cause: e, stackTrace: s),
           404 => NotFoundFailure(cause: e, stackTrace: s, backendMessage: backendMessage),
-          400 || 422 => ValidationFailure(backendMessage ?? 'Verifique os dados informados.'),
+          400 || 422 => ValidationFailure(backendMessage ?? 'Check the information you entered.'),
           _ => ServerFailure(
               statusCode: status,
               backendMessage: backendMessage,
@@ -148,7 +148,7 @@ abstract final class FailureMapper {
     };
   }
 
-  /// Adapte ao formato de erro do seu backend.
+  /// Adapt to your backend's error format.
   static String? _extractMessage(Object? data) {
     if (data is! Map<String, dynamic>) return null;
     final messages = data['messages'] ?? data['errors'];
@@ -160,19 +160,19 @@ abstract final class FailureMapper {
 }
 ```
 
-### Regras
+### Rules
 
-- ✅ `sealed`: um `switch` na UI sobre `Failure` é exaustivo; adicionar um tipo novo quebra a compilação onde precisa de tratamento.
-- ✅ Mensagens do backend só são exibidas se o contrato garantir que são textos para o usuário final. Na dúvida, use a mensagem padrão.
-- ✅ `core/errors/` não importa Flutter. Ícones e cores por tipo de falha ficam em extensions na camada de UI.
-- ❌ `throw Exception('...')` ou `throw 'texto'` em qualquer camada.
-- ❌ `catch (e) {}` vazio. Se o erro pode ser ignorado, comente por quê.
+- ✅ `sealed`: a `switch` over `Failure` in the UI is exhaustive; adding a new type breaks compilation wherever it needs handling.
+- ✅ Backend messages are only shown if the contract guarantees they are end-user text. When in doubt, use the default message.
+- ✅ `core/errors/` does not import Flutter. Icons and colors per failure type live in extensions in the UI layer.
+- ❌ `throw Exception('...')` or `throw 'text'` in any layer.
+- ❌ Empty `catch (e) {}`. If the error can be ignored, comment why.
 
 ---
 
 ## CrashReporter
 
-Abstração sobre o Crashlytics. Permite mock nos testes e desligar em desenvolvimento.
+Abstraction over Crashlytics. Allows mocking in tests and turning it off in development.
 
 ```dart
 // lib/core/errors/crash_reporter.dart
@@ -199,13 +199,13 @@ class FirebaseCrashReporter implements CrashReporter {
   void installGlobalHandlers({required bool enabled}) {
     _crashlytics.setCrashlyticsCollectionEnabled(enabled);
 
-    // Erros do framework (build, layout, paint)
+    // Framework errors (build, layout, paint)
     FlutterError.onError = (details) {
       FlutterError.presentError(details);
       _crashlytics.recordFlutterFatalError(details);
     };
 
-    // Erros assíncronos não capturados
+    // Uncaught asynchronous errors
     PlatformDispatcher.instance.onError = (error, stack) {
       if (error is Failure && !error.shouldReport) return true;
       _crashlytics.recordError(error, stack, fatal: true);
@@ -229,7 +229,7 @@ class FirebaseCrashReporter implements CrashReporter {
       await _crashlytics.setCustomKey('failure_type', error.runtimeType.toString());
       if (cause is DioException) {
         await _crashlytics.setCustomKey('http_method', cause.requestOptions.method);
-        // Só o path: query string pode conter dados pessoais
+        // Path only: the query string may contain personal data
         await _crashlytics.setCustomKey('http_path', cause.requestOptions.uri.path);
         await _crashlytics.setCustomKey('http_status', cause.response?.statusCode ?? 0);
       }
@@ -244,7 +244,7 @@ class FirebaseCrashReporter implements CrashReporter {
         fatal: fatal,
       );
     } catch (_) {
-      // Falha ao reportar nunca pode quebrar o app.
+      // A failure to report must never break the app.
     }
   }
 
@@ -258,9 +258,9 @@ class FirebaseCrashReporter implements CrashReporter {
 
 ---
 
-## Tela de erro de build
+## Build error screen
 
-Quando um widget falha no `build`, o Flutter mostra uma tela vermelha em debug e uma **área cinza vazia** em release. Substitua por uma mensagem amigável com `ErrorWidget.builder`, configurado no `MaterialApp.router`:
+When a widget fails in `build`, Flutter shows a red screen in debug and an **empty gray area** in release. Replace it with a friendly message using `ErrorWidget.builder`, configured in `MaterialApp.router`:
 
 ```dart
 // lib/app.dart
@@ -268,7 +268,7 @@ MaterialApp.router(
   routerConfig: router,
   builder: (context, child) {
     if (!kDebugMode) {
-      // Em debug, mantém a tela vermelha padrão com o detalhe do erro
+      // In debug, keep the default red screen with the error details
       ErrorWidget.builder = (details) => const BuildErrorView();
     }
     return child!;
@@ -288,7 +288,7 @@ class BuildErrorView extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(AppSpacing.lg),
           child: Text(
-            'Não foi possível exibir este conteúdo.',
+            "This content couldn't be displayed.",
             textAlign: TextAlign.center,
           ),
         ),
@@ -298,30 +298,30 @@ class BuildErrorView extends StatelessWidget {
 }
 ```
 
-- ✅ O widget de erro é simples e sem dependências (sem Cubit, sem imagens de rede): ele não pode falhar.
-- ✅ O erro em si continua sendo reportado pelo `FlutterError.onError`; o `ErrorWidget.builder` só troca o que o usuário vê.
+- ✅ The error widget is simple and has no dependencies (no Cubit, no network images): it cannot fail.
+- ✅ The error itself is still reported by `FlutterError.onError`; `ErrorWidget.builder` only changes what the user sees.
 
 ---
 
 ## ErrorHandlerMixin
 
-Ponto único onde Cubits tratam erros.
+Single place where Cubits handle errors.
 
 ```dart
 // lib/core/errors/error_handler_mixin.dart
 mixin ErrorHandlerMixin<S> on BlocBase<S> {
   CrashReporter get crashReporter;
 
-  /// Ignora emit depois de close(): operações assíncronas podem terminar
-  /// depois que o usuário saiu da tela.
+  /// Ignores emit after close(): asynchronous operations may finish
+  /// after the user has left the screen.
   @override
   void emit(S state) {
     if (isClosed) return;
     super.emit(state);
   }
 
-  /// Executa [action]. Em erro, converte para [Failure], reporta quando
-  /// necessário e chama [onFailure]. Retorna `true` se deu certo.
+  /// Runs [action]. On error, converts it to [Failure], reports when
+  /// needed and calls [onFailure]. Returns `true` on success.
   Future<bool> handle({
     required String operation,
     required Future<void> Function() action,
@@ -359,37 +359,37 @@ mixin ErrorHandlerMixin<S> on BlocBase<S> {
 }
 ```
 
-### Regras
+### Rules
 
-- ✅ `operation` no formato `<feature>.<ação>` (`orders.load`, `profile.updatePhoto`). É o que agrupa e filtra os erros no console do Crashlytics.
-- ✅ `context` com identificadores técnicos úteis (`order_id`, `page`), nunca dados pessoais.
-- ✅ `fatal: true` apenas quando a falha impede o uso do fluxo principal do app (ex.: não conseguir restaurar a sessão no bootstrap).
-- ❌ Reportar no repository **e** no Cubit. O mesmo erro aparece duas vezes e distorce as métricas.
-- ❌ Chamar o repository em um command sem passar por `handle(...)`. Como o guia não usa `Result<T>`, esta é a regra que impede exceções de escaparem sem tratamento.
+- ✅ `operation` in the format `<feature>.<action>` (`orders.load`, `profile.updatePhoto`). This is what groups and filters errors in the Crashlytics console.
+- ✅ `context` with useful technical identifiers (`order_id`, `page`), never personal data.
+- ✅ `fatal: true` only when the failure prevents use of the app's main flow (e.g. failing to restore the session at bootstrap).
+- ❌ Reporting in the repository **and** in the Cubit. The same error shows up twice and skews the metrics.
+- ❌ Calling the repository in a command without going through `handle(...)`. Since the guide does not use `Result<T>`, this is the rule that keeps exceptions from escaping unhandled.
 
-Nos testes, use um `FakeCrashReporter` (em `testing/fakes/`) que guarda as falhas recebidas numa lista, para verificar o que foi reportado sem Firebase.
+In tests, use a `FakeCrashReporter` (in `testing/fakes/`) that stores the received failures in a list, to verify what was reported without Firebase.
 
 ---
 
-## Privacidade (LGPD)
+## Privacy (LGPD)
 
-Crashlytics é um serviço de terceiro. Trate tudo que vai para lá como dado compartilhado.
+Crashlytics is a third-party service. Treat everything sent there as shared data.
 
-| ✅ Pode enviar | ❌ Nunca envie |
+| ✅ May send | ❌ Never send |
 |---|---|
-| ID interno opaco do usuário (`setUserId`) | Nome, e-mail, telefone, CPF/RG, endereço |
-| Método e **path** da requisição | URL com query string, headers, tokens, cookies |
-| Status HTTP, tipo de falha, nome da operação | Corpo da requisição ou da resposta |
-| IDs técnicos (`order_id`) | Texto livre digitado pelo usuário |
-| Versão do app, flavor, feature flags ativas | Localização precisa |
+| Opaque internal user ID (`setUserId`) | Name, email, phone, CPF/RG, address |
+| Request method and **path** | URL with query string, headers, tokens, cookies |
+| HTTP status, failure type, operation name | Request or response body |
+| Technical IDs (`order_id`) | Free text typed by the user |
+| App version, flavor, active feature flags | Precise location |
 
-- ✅ `setUserId` no login e `setUserId(null)` no logout, em um único lugar (o `SessionCubit`).
-- ✅ Se precisar inspecionar um corpo de resposta para depurar, faça em debug com `LogInterceptor`, não no Crashlytics.
+- ✅ `setUserId` on login and `setUserId(null)` on logout, in a single place (the `SessionCubit`).
+- ✅ If you need to inspect a response body for debugging, do it in debug with `LogInterceptor`, not in Crashlytics.
 
 ---
 
-## Configuração por ambiente
+## Configuration per environment
 
-- ✅ Coleta desligada em desenvolvimento local (`crashReportingEnabled: false` no `AppConfig` de dev), para não poluir o painel com erros de quem está programando.
-- ✅ Ligada em homologação e produção, cada uma no seu projeto Firebase (ver [09](09-flavors-ambientes.md)).
-- ✅ Upload de símbolos (dSYM no iOS, `--split-debug-info` + `firebase crashlytics:symbols:upload` em builds ofuscados) no pipeline de release. Sem isso, os stack traces chegam ilegíveis.
+- ✅ Collection turned off in local development (`crashReportingEnabled: false` in the dev `AppConfig`), so the dashboard is not polluted with errors from whoever is coding.
+- ✅ Turned on in staging and production, each in its own Firebase project (see [09](09-flavors-environments.md)).
+- ✅ Symbol upload (dSYM on iOS, `--split-debug-info` + `firebase crashlytics:symbols:upload` on obfuscated builds) in the release pipeline. Without it, stack traces arrive unreadable.

@@ -1,29 +1,29 @@
 # 06 · Analytics
 
-## Objetivo
+## Goal
 
-Registrar o uso do app de forma consistente, com nomes previsíveis, sem código repetido em cada feature e sem dados pessoais.
+Record app usage consistently, with predictable names, without repeated code in each feature and without personal data.
 
 ---
 
-## Estrutura
+## Structure
 
 ```mermaid
 flowchart LR
-    Screen -->|cliques| FA["OrdersAnalytics\n(nomes + parâmetros)"]
-    Cubit -->|resultados| FA
+    Screen -->|taps| FA["OrdersAnalytics\n(names + parameters)"]
+    Cubit -->|results| FA
     FA --> AS["AnalyticsService\n(interface)"]
     AS --> FB["FirebaseAnalyticsService"]
-    Router["Observer do GoRouter"] -->|screen_view| AS
+    Router["GoRouter observer"] -->|screen_view| AS
     Session["SessionCubit"] -->|setUserId| AS
 ```
 
-| Peça | Responsabilidade |
+| Piece | Responsibility |
 |---|---|
-| `AnalyticsService` | Única porta para o provedor. Verifica se está habilitado, normaliza parâmetros, engole os próprios erros. |
-| `<Feature>Analytics` | Catálogo de eventos de uma feature: só monta nome e parâmetros. |
-| Observer de navegação | `screen_view` automático. |
-| `SessionCubit` | `setUserId` no login e logout. |
+| `AnalyticsService` | Single gateway to the provider. Checks whether it is enabled, normalizes parameters, swallows its own errors. |
+| `<Feature>Analytics` | Event catalog for a feature: only builds the name and parameters. |
+| Navigation observer | Automatic `screen_view`. |
+| `SessionCubit` | `setUserId` on login and logout. |
 
 ---
 
@@ -48,12 +48,12 @@ class FirebaseAnalyticsService implements AnalyticsService {
 
   @override
   Future<void> logEvent(String name, [Map<String, Object?> params = const {}]) async {
-    assert(_validName.hasMatch(name), 'Nome de evento inválido: $name');
+    assert(_validName.hasMatch(name), 'Invalid event name: $name');
     try {
       await _analytics.logEvent(name: name, parameters: _normalize(params));
       if (kDebugMode) debugPrint('📊 $name $params');
     } catch (e) {
-      if (kDebugMode) debugPrint('⚠️ analytics falhou em $name: $e');
+      if (kDebugMode) debugPrint('⚠️ analytics failed on $name: $e');
     }
   }
 
@@ -68,7 +68,7 @@ class FirebaseAnalyticsService implements AnalyticsService {
   Future<void> setUserProperty(String name, String? value) =>
       _safe(() => _analytics.setUserProperty(name: name, value: value));
 
-  /// Firebase aceita só String e num; remove nulos, converte bool e corta textos.
+  /// Firebase only accepts String and num; removes nulls, converts bool and truncates text.
   Map<String, Object> _normalize(Map<String, Object?> params) => {
         for (final e in params.entries.take(25))
           if (e.value != null)
@@ -89,7 +89,7 @@ class FirebaseAnalyticsService implements AnalyticsService {
 }
 ```
 
-Em ambientes com analytics desligado (`analyticsEnabled: false` no `AppConfig`), o `bootstrap.dart` usa um `NoopAnalyticsService`. Nos testes, use um `FakeAnalyticsService` (em `testing/fakes/`) que guarda os eventos numa lista.
+In environments with analytics turned off (`analyticsEnabled: false` in `AppConfig`), `bootstrap.dart` uses a `NoopAnalyticsService`. In tests, use a `FakeAnalyticsService` (in `testing/fakes/`) that stores events in a list.
 
 ```dart
 class NoopAnalyticsService implements AnalyticsService {
@@ -107,7 +107,7 @@ class NoopAnalyticsService implements AnalyticsService {
 
 ---
 
-## Eventos por feature
+## Events per feature
 
 ```dart
 // features/orders/analytics/orders_analytics.dart
@@ -132,45 +132,45 @@ class OrdersAnalytics {
 }
 ```
 
-### Regras
+### Rules
 
-- ✅ Uma classe por feature, sem estado e sem singleton próprio, criada na rota junto com o Cubit (`OrdersAnalytics(context.read())`) e recebida pelo construtor.
-- ✅ Métodos com parâmetros nomeados e tipados: quem chama não monta `Map` à mão.
-- ✅ Não espere (`await`) o analytics em fluxo de UI: dispare e siga.
-- ❌ Chamar `FirebaseAnalytics.instance` fora do `FirebaseAnalyticsService`.
-- ❌ `try/catch` e checagem de "está inicializado?" nas classes de feature. Isso é responsabilidade do serviço central.
-- ❌ Adicionar `user_id` em cada evento. Ele é definido uma vez com `setUserId`.
+- ✅ One class per feature, stateless and without its own singleton, created in the route along with the Cubit (`OrdersAnalytics(context.read())`) and received through the constructor.
+- ✅ Methods with named, typed parameters: callers don't build a `Map` by hand.
+- ✅ Don't `await` analytics in UI flows: fire and move on.
+- ❌ Calling `FirebaseAnalytics.instance` outside `FirebaseAnalyticsService`.
+- ❌ `try/catch` and "is it initialized?" checks in feature classes. That is the central service's responsibility.
+- ❌ Adding `user_id` to every event. It is set once with `setUserId`.
 
 ---
 
-## Nomenclatura
+## Naming
 
-**Evento:** `<feature>_<objeto>_<ação>`, em `snake_case`, inglês ou português (escolha um por projeto e não misture).
+**Event:** `<feature>_<object>_<action>`, in `snake_case`, English or Portuguese (pick one per project and don't mix).
 
-| ✅ Bom | ❌ Ruim | Problema |
+| ✅ Good | ❌ Bad | Problem |
 |---|---|---|
-| `orders_item_tap` | `clickOrder` | camelCase, sem feature |
-| `orders_filter_apply` | `orders_filter` | sem ação |
-| `profile_photo_update_success` | `profile_success` | não diz o que deu certo |
-| `orders_create_submit` + `success: false` | `orders_create_error_404` | detalhe técnico no nome; vai para parâmetro |
+| `orders_item_tap` | `clickOrder` | camelCase, no feature |
+| `orders_filter_apply` | `orders_filter` | no action |
+| `profile_photo_update_success` | `profile_success` | doesn't say what succeeded |
+| `orders_create_submit` + `success: false` | `orders_create_error_404` | technical detail in the name; it belongs in a parameter |
 
-**Ações comuns:** `view`, `tap`, `submit`, `success`, `failure`, `open`, `close`, `share`, `search`, `filter_apply`, `loaded`.
+**Common actions:** `view`, `tap`, `submit`, `success`, `failure`, `open`, `close`, `share`, `search`, `filter_apply`, `loaded`.
 
-**Limites do Firebase Analytics:**
+**Firebase Analytics limits:**
 
-| Item | Limite |
+| Item | Limit |
 |---|---|
-| Nome do evento | 40 caracteres, começa com letra, só `[a-z0-9_]` |
-| Parâmetros por evento | 25 |
-| Nome do parâmetro | 40 caracteres |
-| Valor de texto | 100 caracteres |
-| Nomes reservados | Não use prefixos `firebase_`, `google_`, `ga_` nem eventos reservados (`session_start`, `app_open`...) |
+| Event name | 40 characters, starts with a letter, only `[a-z0-9_]` |
+| Parameters per event | 25 |
+| Parameter name | 40 characters |
+| Text value | 100 characters |
+| Reserved names | Don't use the prefixes `firebase_`, `google_`, `ga_` or reserved events (`session_start`, `app_open`...) |
 
 ---
 
-## Screen view automático
+## Automatic screen view
 
-O observer da navegação registra `screen_view` com o **nome da rota**, não o path (para não gerar uma tela diferente por ID).
+The navigation observer records `screen_view` with the **route name**, not the path (so it doesn't create a different screen per ID).
 
 ```dart
 // lib/core/navigation/analytics_route_observer.dart
@@ -198,25 +198,25 @@ class AnalyticsRouteObserver extends NavigatorObserver {
 }
 ```
 
-Registre em `GoRouter(observers: [AnalyticsRouteObserver(analytics)])`, no `createRouter` (ver [07](07-navegacao.md#router)), e garanta que toda `GoRoute` tenha `name` (ver [07](07-navegacao.md)).
+Register it in `GoRouter(observers: [AnalyticsRouteObserver(analytics)])`, in `createRouter` (see [07](07-navigation.md#router)), and make sure every `GoRoute` has a `name` (see [07](07-navigation.md)).
 
-Os `observers` do `GoRouter` só enxergam o navigator raiz. Rotas dentro de `ShellRoute`/`StatefulShellBranch` precisam do observer também no parâmetro `observers` do shell ou do branch.
-
----
-
-## Privacidade
-
-As mesmas regras do Crashlytics valem aqui (ver [05](05-erros-crashlytics.md#privacidade-lgpd)): nada de nome, e-mail, documento, telefone, endereço ou texto livre digitado em parâmetros. Para buscas, registre `query_length` ou a categoria, não o termo.
+`GoRouter`'s `observers` only see the root navigator. Routes inside `ShellRoute`/`StatefulShellBranch` also need the observer in the `observers` parameter of the shell or branch.
 
 ---
 
-## Catálogo de eventos
+## Privacy
 
-Cada projeto mantém `docs/analytics-events.md` com uma tabela por feature:
+The same Crashlytics rules apply here (see [05](05-errors-crashlytics.md#privacy-lgpd)): no name, email, document, phone, address or free text typed in parameters. For searches, record `query_length` or the category, not the term.
 
-| Evento | Quando dispara | Parâmetros | Origem |
+---
+
+## Event catalog
+
+Each project maintains `docs/analytics-events.md` with one table per feature:
+
+| Event | When it fires | Parameters | Source |
 |---|---|---|---|
-| `orders_list_loaded` | Lista carregada com sucesso | `count` (int) | `OrdersCubit.load` |
-| `orders_item_tap` | Toque em um pedido | `order_id` (string), `position` (int) | `OrdersScreen` |
+| `orders_list_loaded` | List loaded successfully | `count` (int) | `OrdersCubit.load` |
+| `orders_item_tap` | Tap on an order | `order_id` (string), `position` (int) | `OrdersScreen` |
 
-Evento novo ou alterado só entra com a tabela atualizada no mesmo merge request.
+A new or changed event is only merged with the table updated in the same merge request.

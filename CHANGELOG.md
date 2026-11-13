@@ -1,25 +1,33 @@
 # Changelog
 
-Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões em [SemVer](https://semver.org/lang/pt-BR/).
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
+
+## [Unreleased]
+
+### Changed
+
+- The whole plugin (guide, skills, agents, spec template, README and manifests) is now written in English. Agents reply in the user's language.
+- Guide files renamed to English: `01-architecture.md`, `02-state-management.md`, `03-componentization.md`, `04-networking.md`, `05-errors-crashlytics.md`, `07-navigation.md`, `09-flavors-environments.md`.
+- Spec IDs are now `FR` (functional requirement), `BR` (business rule) and `AC` (acceptance criterion); the draft status is `draft` and section 11 is "Open questions".
 
 ## [0.2.0] - 2026-11-12
 
-### Adicionado
+### Added
 
-- Skill `flutter-spec`: escreve a spec de uma feature (produto + desenho técnico pelo guia) a partir de texto, link do Figma (via MCP do Figma) e contrato da API, perguntando uma lacuna por vez, e commita em `docs/specs/<slug>.md` na branch da feature.
-- Template da spec com IDs rastreáveis (`RF`, `RN`, `CA`), estados de tela, desenho técnico, analytics, testes esperados e perguntas em aberto.
-- Agente `flutter-spec`: a mesma spec em modo não interativo; lacunas viram "Perguntas em aberto" e a spec fica como `rascunho`.
-- README: configuração do MCP do Figma e fluxo spec → implementação.
+- `flutter-spec` skill: writes a feature spec (product + technical design per the guide) from text, a Figma link (via the Figma MCP) and the API contract, asking about one gap at a time, and commits it to `docs/specs/<slug>.md` on the feature branch.
+- Spec template with traceable IDs (`RF`, `RN`, `CA`), screen states, technical design, analytics, expected tests and open questions.
+- `flutter-spec` agent: the same spec in non-interactive mode; gaps become "Open questions" and the spec stays as a draft.
+- README: Figma MCP setup and the spec → implementation flow.
 
-### Alterado
+### Changed
 
-- `flutter-dev`: o relatório final cita os IDs de requisitos e critérios de aceite quando a entrada é uma spec.
+- `flutter-dev`: the final report cites the requirement and acceptance criteria IDs when the input is a spec.
 
 ## [0.1.0] - 2026-11-11
 
-### Adicionado
+### Added
 
-- Guia de arquitetura Flutter (01 a 09), alinhado ao Flutter oficial, com 4 divergências intencionais documentadas.
-- Skill `flutter-guidelines`: índice do guia, regras de bloqueio, mapa "tarefa → documento → skill oficial", política de migração de legado e particularidades por projeto via `CLAUDE.md`.
-- Agente `flutter-dev`: desenvolvimento seguindo o guia, com validação por fatia e commits atômicos.
-- Dependência do plugin oficial `dart-flutter`.
+- Flutter architecture guide (01 to 09), aligned with official Flutter, with 4 documented intentional divergences.
+- `flutter-guidelines` skill: guide index, blocking rules, "task → document → official skill" map, legacy migration policy and per-project specifics via `CLAUDE.md`.
+- `flutter-dev` agent: development following the guide, with per-slice validation and atomic commits.
+- Dependency on the official `dart-flutter` plugin.

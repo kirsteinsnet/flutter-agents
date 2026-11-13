@@ -1,112 +1,112 @@
 ---
 name: flutter-guidelines
-description: Diretrizes de arquitetura Flutter da equipe. Use antes de escrever, alterar, especificar ou revisar código Flutter/Dart em projetos da equipe, para saber as regras obrigatórias, qual documento do guia ler e qual skill oficial do Flutter/Dart usar junto.
+description: The team's Flutter architecture guidelines. Use before writing, changing, specifying or reviewing Flutter/Dart code in the team's projects, to learn the mandatory rules, which guide document to read and which official Flutter/Dart skill to use alongside it.
 ---
 
-# Diretrizes Flutter da equipe
+# Team Flutter guidelines
 
-O guia completo está na pasta [`guide/`](guide/README.md) desta skill (caminho absoluto: `${CLAUDE_SKILL_DIR}/guide/`). Esta skill é o **índice**: regras que nunca podem ser quebradas e o mapa de quais documentos ler. Antes de implementar ou revisar, **leia os documentos indicados no mapa** para o tipo de tarefa. Este resumo não substitui o guia.
+The full guide is in this skill's [`guide/`](guide/README.md) folder (absolute path: `${CLAUDE_SKILL_DIR}/guide/`). This skill is the **index**: rules that must never be broken and the map of which documents to read. Before implementing or reviewing, **read the documents the map points to** for the type of task. This summary does not replace the guide.
 
-## Precedência
+## Precedence
 
-1. **Guia da equipe** (`${CLAUDE_SKILL_DIR}/guide/`), sempre que ele trata do assunto. Exceções aprovadas para um projeto ficam no `CLAUDE.md` dele (ver "Particularidades do projeto").
-2. **Skills oficiais** do plugin `dart-flutter` (flutter/agent-plugins) e de dart-lang/skills, para tudo que o guia não cobre e para o "como fazer" (comandos, APIs, configuração nativa).
-3. **Código existente do projeto**, só como referência de domínio. Ele **não** é referência de padrão: código fora do guia é legado em migração.
+1. **The team's guide** (`${CLAUDE_SKILL_DIR}/guide/`), whenever it covers the subject. Exceptions approved for a project live in that project's `CLAUDE.md` (see "Per-project specifics").
+2. **Official skills** from the `dart-flutter` plugin (flutter/agent-plugins) and from dart-lang/skills, for everything the guide doesn't cover and for the "how to" (commands, APIs, native setup).
+3. **The project's existing code**, only as a domain reference. It is **not** a pattern reference: code outside the guide is legacy under migration.
 
-Divergências **intencionais** do guia em relação ao Flutter oficial. Aqui o guia vence, mesmo que uma skill oficial diga o contrário:
+**Intentional** divergences of the guide from official Flutter. Here the guide wins, even if an official skill says otherwise:
 
-| Tema | Oficial | Guia |
+| Topic | Official | Guide |
 |---|---|---|
-| Pastas | `lib/data` + `lib/domain` por tipo, `lib/ui/<feature>` | Tudo dentro de `lib/features/<feature>/` (`data/`, `ui/view_models/`, `ui/widgets/`); compartilhado em `lib/shared/` |
-| Erros entre camadas | Retornar `Result<T>` | Lançar `Failure` (sealed) e capturar com `ErrorHandlerMixin.handle` no Cubit |
-| Estado | `ChangeNotifier` + `Command` | `Cubit` no papel de ViewModel, State imutável com `status` |
-| Models | `freezed`/`built_value` | `fromJson`/`toJson` manuais e estritos (pattern matching + `FormatException`) |
+| Folders | `lib/data` + `lib/domain` by type, `lib/ui/<feature>` | Everything inside `lib/features/<feature>/` (`data/`, `ui/view_models/`, `ui/widgets/`); shared code in `lib/shared/` |
+| Errors between layers | Return `Result<T>` | Throw `Failure` (sealed) and catch it with `ErrorHandlerMixin.handle` in the Cubit |
+| State | `ChangeNotifier` + `Command` | `Cubit` in the ViewModel role, immutable State with `status` |
+| Models | `freezed`/`built_value` | Manual, strict `fromJson`/`toJson` (pattern matching + `FormatException`) |
 
-## Particularidades do projeto
+## Per-project specifics
 
-O guia é genérico. O que muda de projeto para projeto vem do `CLAUDE.md` (e do `README.md`) do repositório onde você está trabalhando:
+The guide is generic. What changes from project to project comes from the `CLAUDE.md` (and the `README.md`) of the repository you are working in:
 
-- flavors, ambientes e comandos de execução, build e teste;
-- branches de integração e padrão de nomes de branch;
-- design system usado e pacotes internos;
-- idioma do código e dos commits.
+- flavors, environments and run, build and test commands;
+- integration branches and branch naming pattern;
+- design system in use and internal packages;
+- language of the code and of the commits.
 
-Se o `CLAUDE.md` tiver uma seção **"Exceções ao guia"**, as exceções listadas valem para aquele projeto. Qualquer outro trecho do `CLAUDE.md` que contradiga o guia descreve código legado, não um padrão a seguir.
+If `CLAUDE.md` has a **"Guide exceptions"** section, the listed exceptions apply to that project. Any other part of `CLAUDE.md` that contradicts the guide describes legacy code, not a pattern to follow.
 
-## Regras de bloqueio
+## Blocking rules
 
-Nunca faça o que está abaixo. Se o código existente faz, migre (ver "Migração" abaixo).
+Never do what is listed below. If existing code does it, migrate it (see "Migration" below).
 
-**Arquitetura e DI** ([01](guide/01-arquitetura.md))
-- Feature importando outra feature; `core/` importando `features/`.
-- `static X get instance`, variáveis globais, `get_it` ou qualquer service locator. Dependências chegam pelo construtor, em campos privados; a composição usa `RepositoryProvider`/`BlocProvider` e `context.read()` só em rotas e providers.
-- Repository dependendo de outro repository.
-- Nomes fora do padrão: pastas em `snake_case`; `ui/view_models/`, `ui/widgets/`; classes `XxxScreen`, `XxxCubit`, `XxxState`, `XxxRepository`(+`Impl`).
+**Architecture and DI** ([01](guide/01-architecture.md))
+- A feature importing another feature; `core/` importing `features/`.
+- `static X get instance`, global variables, `get_it` or any service locator. Dependencies arrive through the constructor, in private fields; composition uses `RepositoryProvider`/`BlocProvider`, and `context.read()` only in routes and providers.
+- A repository depending on another repository.
+- Non-standard names: folders in `snake_case`; `ui/view_models/`, `ui/widgets/`; classes `XxxScreen`, `XxxCubit`, `XxxState`, `XxxRepository`(+`Impl`).
 
-**Estado** ([02](guide/02-gerenciamento-estado.md))
-- `BuildContext`, `material.dart`, navegação, diálogo ou toast dentro do Cubit.
-- Operação assíncrona do Cubit fora de `handle(...)`.
-- State mutável, sem `Equatable`, ou com `String errorMessage` em vez de `Failure`.
-- Efeito colateral (toast, navegação) dentro de `BlocBuilder`; deve ficar em `BlocListener`.
+**State** ([02](guide/02-state-management.md))
+- `BuildContext`, `material.dart`, navigation, dialog or toast inside the Cubit.
+- A Cubit async operation outside `handle(...)`.
+- Mutable State, without `Equatable`, or with `String errorMessage` instead of `Failure`.
+- Side effect (toast, navigation) inside `BlocBuilder`; it must go in `BlocListener`.
 
-**Componentes** ([03](guide/03-componentizacao.md))
-- Widget abaixo da Screen lendo o Cubit (exceto `XxxSection` da mesma feature).
-- Métodos `Widget _buildX()` no lugar de classes; cores, fontes e espaçamentos fixos no código.
-- Tela que carrega dados sem os estados de loading, erro (com retry) e vazio.
+**Components** ([03](guide/03-componentization.md))
+- A widget below the Screen reading the Cubit (except a `XxxSection` of the same feature).
+- `Widget _buildX()` methods instead of classes; hardcoded colors, fonts and spacing.
+- A screen that loads data without the loading, error (with retry) and empty states.
 
-**Rede e models** ([04](guide/04-requests-rede.md))
-- `Dio()` criado fora do `ApiClient`; requisição fora de `safeCall`.
-- `throw Exception('...')` ou `throw 'texto'`. Sempre uma subclasse de `Failure`.
-- Repository expondo `Response`, `Map` ou `DioException`.
-- Valor padrão silencioso para campo obrigatório no `fromJson` (`?? ''`, `?? DateTime.now()`).
+**Networking and models** ([04](guide/04-networking.md))
+- `Dio()` created outside `ApiClient`; a request outside `safeCall`.
+- `throw Exception('...')` or `throw 'text'`. Always a subclass of `Failure`.
+- A repository exposing `Response`, `Map` or `DioException`.
+- A silent default value for a required field in `fromJson` (`?? ''`, `?? DateTime.now()`).
 
-**Erros e privacidade** ([05](guide/05-erros-crashlytics.md))
-- Mostrar `error.toString()` ao usuário. Use `failure.userMessage`.
-- Reportar o mesmo erro em duas camadas.
-- Nome, e-mail, CPF, telefone, endereço, corpo de request/response ou URL com query string no Crashlytics ou no Analytics.
+**Errors and privacy** ([05](guide/05-errors-crashlytics.md))
+- Showing `error.toString()` to the user. Use `failure.userMessage`.
+- Reporting the same error in two layers.
+- Name, email, CPF, phone, address, request/response body or URL with a query string in Crashlytics or Analytics.
 
 **Analytics** ([06](guide/06-analytics.md))
-- `FirebaseAnalytics.instance` fora do `FirebaseAnalyticsService`; `user_id` como parâmetro de evento.
-- Nome de evento fora de `<feature>_<objeto>_<ação>` em `snake_case`.
+- `FirebaseAnalytics.instance` outside `FirebaseAnalyticsService`; `user_id` as an event parameter.
+- Event name outside `<feature>_<object>_<action>` in `snake_case`.
 
-**Navegação e push** ([07](guide/07-navegacao.md), [08](guide/08-push-notifications.md))
-- `Navigator.push(MaterialPageRoute(...))`; `GoRoute` sem `name`; dado obrigatório só em `extra`.
-- Lógica de rota de push fora do `PushRouter`.
+**Navigation and push** ([07](guide/07-navigation.md), [08](guide/08-push-notifications.md))
+- `Navigator.push(MaterialPageRoute(...))`; `GoRoute` without `name`; required data only in `extra`.
+- Push routing logic outside `PushRouter`.
 
-**Ambiente** ([09](guide/09-flavors-ambientes.md))
-- `if (environment == ...)` ou `kReleaseMode` para decidir ambiente; `appFlavor` lido fora do `main.dart`.
-- Segredos no código ou em `dart-define` versionado.
+**Environment** ([09](guide/09-flavors-environments.md))
+- `if (environment == ...)` or `kReleaseMode` to decide the environment; `appFlavor` read outside `main.dart`.
+- Secrets in the code or in a committed `dart-define`.
 
-## Mapa: tarefa → guia → skill oficial
+## Map: task → guide → official skill
 
-| Tarefa | Leia no guia | Skill oficial complementar |
+| Task | Read in the guide | Complementary official skill |
 |---|---|---|
-| Feature nova (ponta a ponta) | 01, 02, 03, 04, 06 | `flutter-apply-architecture-best-practices` (respeitando a precedência) |
-| Tela, componente, layout | 03 | `flutter-build-responsive-layout`, `flutter-fix-layout-issues`, `flutter-add-widget-preview` |
-| Estado / Cubit | 02 | `dart-use-pattern-matching` |
-| Chamada de API, repository | 04, 05 | `flutter-use-http-package` (só conceitos; o cliente é Dio) |
+| New feature (end to end) | 01, 02, 03, 04, 06 | `flutter-apply-architecture-best-practices` (respecting the precedence) |
+| Screen, component, layout | 03 | `flutter-build-responsive-layout`, `flutter-fix-layout-issues`, `flutter-add-widget-preview` |
+| State / Cubit | 02 | `dart-use-pattern-matching` |
+| API call, repository | 04, 05 | `flutter-use-http-package` (concepts only; the client is Dio) |
 | Model / JSON | 04 | `flutter-implement-json-serialization`, `dart-use-pattern-matching` |
-| Tratamento de erro, Crashlytics | 05 | `dart-fix-runtime-errors` |
+| Error handling, Crashlytics | 05 | `dart-fix-runtime-errors` |
 | Analytics | 06 | — |
-| Rotas, deep link | 07 | `flutter-setup-declarative-routing` |
+| Routes, deep link | 07 | `flutter-setup-declarative-routing` |
 | Push notification | 08, 07 | — |
-| Flavors, ambientes | 09 | — |
-| Testes | 02 (seção Testando) | `dart-add-unit-test`, `flutter-add-widget-test`, `dart-generate-test-mocks`, `flutter-add-integration-test` |
-| Lint, análise, formatação | — | `dart-run-static-analysis` |
-| Conflito de dependências | — | `dart-resolve-package-conflicts` |
-| Documentação de API (`///`) | — | `dart-write-documentation` |
+| Flavors, environments | 09 | — |
+| Tests | 02 (Testing section) | `dart-add-unit-test`, `flutter-add-widget-test`, `dart-generate-test-mocks`, `flutter-add-integration-test` |
+| Lint, analysis, formatting | — | `dart-run-static-analysis` |
+| Dependency conflict | — | `dart-resolve-package-conflicts` |
+| API documentation (`///`) | — | `dart-write-documentation` |
 
-## Migração de código legado
+## Legacy code migration
 
-Todo código escrito **ou alterado** segue o guia. Ao tocar código fora do padrão:
+All code written **or changed** follows the guide. When touching non-standard code:
 
-- **Dentro da feature tocada:** migre o que for necessário para a mudança ficar no padrão (ex.: Cubit que usa `XService.instance` passa a receber a dependência pelo construtor). Faça isso num commit `refactor:` separado, **antes** da mudança de comportamento, sem alterar comportamento.
-- **Fora da feature tocada** (infraestrutura em `core/`, DI do app inteiro, `ApiClient`, outra feature): **pare e peça confirmação**, descrevendo o que precisa mudar e quantos arquivos são afetados.
-- Divergências vistas e não migradas entram no relatório final.
+- **Inside the touched feature:** migrate what is needed for the change to follow the pattern (e.g. a Cubit that uses `XService.instance` starts receiving the dependency through the constructor). Do it in a separate `refactor:` commit, **before** the behavior change, without changing behavior.
+- **Outside the touched feature** (infrastructure in `core/`, app-wide DI, `ApiClient`, another feature): **stop and ask for confirmation**, describing what needs to change and how many files are affected.
+- Divergences seen and not migrated go into the final report.
 
-## Validação mínima
+## Minimum validation
 
-Antes de considerar qualquer mudança pronta:
-1. `dart format` nos arquivos alterados.
-2. `dart analyze` sem erros nem warnings nos arquivos tocados (via ferramenta de análise do Dart MCP server, ou CLI).
-3. Testes novos para o que foi criado (Cubit com `bloc_test` e fakes de `testing/fakes/`; `fromJson` com JSON válido e fora do contrato) e testes existentes afetados passando.
+Before considering any change done:
+1. `dart format` on the changed files.
+2. `dart analyze` with no errors or warnings in the touched files (via the Dart MCP server's analysis tool, or the CLI).
+3. New tests for what was created (Cubit with `bloc_test` and fakes from `testing/fakes/`; `fromJson` with valid and off-contract JSON) and affected existing tests passing.
