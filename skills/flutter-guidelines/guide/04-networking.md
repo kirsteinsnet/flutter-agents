@@ -1,12 +1,12 @@
-# 04 · Requests e rede
+# 04 · Requests and networking
 
-## Objetivo
+## Goal
 
-Padronizar como o app fala com APIs: um cliente HTTP configurado em um único lugar, interceptors com uma responsabilidade cada, conversão de erros em `Failure` e repositories que devolvem modelos de domínio.
+Standardize how the app talks to APIs: one HTTP client configured in a single place, interceptors with one responsibility each, conversion of errors into `Failure`, and repositories that return domain models.
 
 ---
 
-## Fluxo de uma requisição
+## Request flow
 
 ```mermaid
 sequenceDiagram
@@ -29,14 +29,14 @@ sequenceDiagram
     S->>S: ResponseValidator + map(json)
     S-->>R: List<Order>
     R-->>C: List<Order>
-    Note over S,C: Em erro, safeCall lança Failure tipada,<br/>que o ErrorHandlerMixin captura no Cubit
+    Note over S,C: On error, safeCall throws a typed Failure,<br/>which the ErrorHandlerMixin catches in the Cubit
 ```
 
 ---
 
 ## ApiClient
 
-No vocabulário oficial, o `ApiClient` é um **service**: envolve a API REST e não guarda estado de negócio. É um `Dio` configurado a partir do `AppConfig`. Se o app fala com mais de um backend, crie uma classe por backend (`PaymentsApiClient`), para que cada repository receba o tipo certo pelo construtor.
+In the official vocabulary, `ApiClient` is a **service**: it wraps the REST API and holds no business state. It is a `Dio` configured from `AppConfig`. If the app talks to more than one backend, create one class per backend (`PaymentsApiClient`), so each repository receives the right type through its constructor.
 
 ```dart
 // lib/core/network/api_client.dart
@@ -60,7 +60,7 @@ class ApiClient {
       HeadersInterceptor(config),
       AuthInterceptor(tokenStorage),
       RefreshTokenInterceptor(
-        // Dio "limpo", sem este interceptor: evita deadlock na fila do QueuedInterceptor
+        // "Clean" Dio, without this interceptor: avoids a deadlock in the QueuedInterceptor queue
         plainDio: Dio(BaseOptions(baseUrl: config.apiBaseUrl)),
         tokenStorage: tokenStorage,
         sessionEvents: sessionEvents,
@@ -75,26 +75,26 @@ class ApiClient {
 }
 ```
 
-### Regras
+### Rules
 
-- ✅ Base URL e timeouts vêm do `AppConfig`, nunca de string solta no repository.
-- ✅ Timeouts específicos (upload de arquivo, relatório pesado) via `Options(receiveTimeout: ...)` na própria chamada.
-- ✅ `LogInterceptor` só quando `enableHttpLogs` (desligado em produção).
-- ❌ Criar `Dio()` dentro de repository ou Cubit.
-- ❌ `HttpOverrides` que aceitam qualquer certificado. Se o backend usa uma CA própria, adicione apenas essa CA ao `SecurityContext`.
+- ✅ Base URL and timeouts come from `AppConfig`, never from a loose string in the repository.
+- ✅ Specific timeouts (file upload, heavy report) via `Options(receiveTimeout: ...)` on the call itself.
+- ✅ `LogInterceptor` only when `enableHttpLogs` (off in production).
+- ❌ Creating `Dio()` inside a repository or Cubit.
+- ❌ `HttpOverrides` that accept any certificate. If the backend uses its own CA, add only that CA to the `SecurityContext`.
 
 ---
 
 ## Interceptors
 
-Cada interceptor faz uma coisa só.
+Each interceptor does exactly one thing.
 
-| Interceptor | Responsabilidade |
+| Interceptor | Responsibility |
 |---|---|
-| `HeadersInterceptor` | Headers fixos: versão do app, plataforma, device id, `Accept-Language` |
-| `AuthInterceptor` | Adicionar `Authorization: Bearer <token>` quando houver sessão |
-| `RefreshTokenInterceptor` | Em 401: renovar o token **uma vez** (mesmo com N requisições falhando juntas), refazer a requisição e, se não der, avisar que a sessão expirou |
-| `LogInterceptor` | Log em desenvolvimento |
+| `HeadersInterceptor` | Fixed headers: app version, platform, device id, `Accept-Language` |
+| `AuthInterceptor` | Add `Authorization: Bearer <token>` when there is a session |
+| `RefreshTokenInterceptor` | On 401: renew the token **once** (even with N requests failing together), retry the request and, if that fails, signal that the session expired |
+| `LogInterceptor` | Logging in development |
 
 ```dart
 // lib/core/network/interceptors/refresh_token_interceptor.dart
@@ -105,8 +105,8 @@ class RefreshTokenInterceptor extends QueuedInterceptor {
     required this.sessionEvents,
   });
 
-  /// Usado no refresh e no retry. Não pode ter este interceptor: se o retry
-  /// falhar dentro da fila do QueuedInterceptor, a fila trava esperando a si mesma.
+  /// Used for the refresh and the retry. It must not have this interceptor: if the retry
+  /// fails inside the QueuedInterceptor queue, the queue hangs waiting on itself.
   final Dio plainDio;
   final TokenStorage tokenStorage;
   final SessionEvents sessionEvents;
@@ -126,8 +126,8 @@ class RefreshTokenInterceptor extends QueuedInterceptor {
       return handler.next(err);
     }
 
-    // QueuedInterceptor processa um erro por vez: as requisições que falharem
-    // enquanto o refresh roda esperam e já encontram o token novo.
+    // QueuedInterceptor processes one error at a time: requests that fail
+    // while the refresh runs wait and then find the new token already in place.
     final refreshed = await _refreshIfNeeded(err.requestOptions);
     if (!refreshed) {
       sessionEvents.emitExpired();
@@ -146,7 +146,7 @@ class RefreshTokenInterceptor extends QueuedInterceptor {
   Future<bool> _refreshIfNeeded(RequestOptions failed) async {
     final current = await tokenStorage.accessToken;
     final usedToken = failed.headers['Authorization'];
-    // Outra requisição já renovou o token enquanto esta esperava na fila
+    // Another request already renewed the token while this one waited in the queue
     if (current != null && usedToken != 'Bearer $current') return true;
 
     final refreshToken = await tokenStorage.refreshToken;
@@ -170,9 +170,9 @@ class RefreshTokenInterceptor extends QueuedInterceptor {
 }
 ```
 
-### Sessão expirada
+### Expired session
 
-O interceptor **não navega e não faz logout**. Ele só emite um evento:
+The interceptor **does not navigate and does not log out**. It only emits an event:
 
 ```dart
 // lib/core/network/session_events.dart
@@ -183,13 +183,13 @@ class SessionEvents {
 }
 ```
 
-Quem escuta é o `SessionCubit` (estado global), que limpa a sessão. O `redirect` do router reage e leva para o login (ver [07](07-navegacao.md)). Assim a camada de rede continua sem conhecer UI nem rotas.
+The listener is `SessionCubit` (global state), which clears the session. The router's `redirect` reacts and takes the user to login (see [07](07-navigation.md)). This way the network layer still knows nothing about UI or routes.
 
 ---
 
 ## safeCall
 
-Extensão que executa a requisição, valida a resposta, aplica o `map` e converte **qualquer** erro em `Failure`.
+An extension that runs the request, validates the response, applies `map` and converts **any** error into a `Failure`.
 
 ```dart
 // lib/core/network/safe_call.dart
@@ -200,16 +200,16 @@ extension SafeCall on ApiClient {
   ) async {
     try {
       final response = await request(dio);
-      responseValidator.validate(response); // lança Failure se o corpo indicar erro
+      responseValidator.validate(response); // throws Failure if the body indicates an error
       return await map(response.data);
     } on Failure {
       rethrow;
     } on DioException catch (e, s) {
       throw FailureMapper.fromDio(e, s);
     } on FormatException catch (e, s) {
-      throw UnexpectedFailure(cause: e, stackTrace: s, debugMessage: 'JSON inválido');
+      throw UnexpectedFailure(cause: e, stackTrace: s, debugMessage: 'Invalid JSON');
     } on TypeError catch (e, s) {
-      throw UnexpectedFailure(cause: e, stackTrace: s, debugMessage: 'Contrato do JSON mudou');
+      throw UnexpectedFailure(cause: e, stackTrace: s, debugMessage: 'JSON contract changed');
     } catch (e, s) {
       throw UnexpectedFailure(cause: e, stackTrace: s);
     }
@@ -219,7 +219,7 @@ extension SafeCall on ApiClient {
 
 ### ResponseValidator
 
-Alguns backends respondem `200` com erro no corpo (`{"success": false, "messages": [...]}`). Essa particularidade **não** entra no `safeCall`: ela vai para um validator injetado no `ApiClient`.
+Some backends respond `200` with an error in the body (`{"success": false, "messages": [...]}`). This quirk does **not** go into `safeCall`: it goes into a validator injected into `ApiClient`.
 
 ```dart
 abstract interface class ResponseValidator {
@@ -232,7 +232,7 @@ class DefaultResponseValidator implements ResponseValidator {
   void validate(Response<dynamic> response) {}
 }
 
-/// Exemplo para um backend que usa envelope { success, messages, data }
+/// Example for a backend that uses a { success, messages, data } envelope
 class EnvelopeResponseValidator implements ResponseValidator {
   const EnvelopeResponseValidator();
 
@@ -250,22 +250,22 @@ class EnvelopeResponseValidator implements ResponseValidator {
 }
 ```
 
-### Regras
+### Rules
 
-- ✅ Todo acesso HTTP passa por `safeCall`.
-- ✅ `safeCall` só converte erros. Quem registra no Crashlytics é o Cubit (ver [05](05-erros-crashlytics.md)), para cada erro ser reportado uma única vez.
-- ❌ Regra de negócio, navegação ou logout dentro do `safeCall`.
-- ❌ `throw Exception('mensagem')`. Sempre uma subclasse de `Failure`.
+- ✅ Every HTTP access goes through `safeCall`.
+- ✅ `safeCall` only converts errors. The Cubit is the one that records to Crashlytics (see [05](05-errors-crashlytics.md)), so each error is reported exactly once.
+- ❌ Business rules, navigation or logout inside `safeCall`.
+- ❌ `throw Exception('message')`. Always a subclass of `Failure`.
 
-### Diferença em relação ao guia oficial
+### Difference from the official guide
 
-O [guia oficial](https://docs.flutter.dev/app-architecture/design-patterns/result) recomenda que services e repositories **retornem** `Result<T>` (`Ok`/`Error`) em vez de lançar exceções. Este guia mantém o modelo de **lançar `Failure`** e capturar no `ErrorHandlerMixin` do Cubit (ver [05](05-erros-crashlytics.md)), porque:
+The [official guide](https://docs.flutter.dev/app-architecture/design-patterns/result) recommends that services and repositories **return** `Result<T>` (`Ok`/`Error`) instead of throwing exceptions. This guide keeps the model of **throwing `Failure`** and catching it in the Cubit's `ErrorHandlerMixin` (see [05](05-errors-crashlytics.md)), because:
 
-- o ponto que o `Result` resolve (exceção esquecida atravessando camadas até derrubar o app) é coberto por uma regra única: todo command do Cubit passa por `handle(...)`, que captura, tipa e reporta;
-- evita o desembrulho de `Result` em cada camada intermediária (repository que só repassa, use case que combina chamadas);
-- a `Failure` é `sealed`, então o tratamento na UI continua exaustivo.
+- the problem `Result` solves (a forgotten exception crossing layers until it crashes the app) is covered by a single rule: every Cubit command goes through `handle(...)`, which catches, types and reports;
+- it avoids unwrapping `Result` in every intermediate layer (a repository that only forwards, a use case that combines calls);
+- `Failure` is `sealed`, so handling in the UI stays exhaustive.
 
-O custo é que o compilador não obriga o tratamento: a revisão de código precisa garantir que nenhum command chama o repository fora do `handle`.
+The cost is that the compiler does not enforce handling: code review must ensure that no command calls the repository outside `handle`.
 
 ---
 
@@ -292,7 +292,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
   @override
   Future<List<Order>> fetchOrders({int page = 1}) => _api.safeCall(
         (dio) => dio.get(_base, queryParameters: {'page': page}),
-        // Listas grandes: converte em outro isolate para não travar a UI
+        // Large lists: convert in another isolate so the UI does not freeze
         (data) => compute(Order.listFromJson, data),
       );
 
@@ -310,19 +310,19 @@ class OrdersRepositoryImpl implements OrdersRepository {
 }
 ```
 
-### Regras
+### Rules
 
-- ✅ Interface + implementação. O Cubit depende da interface; o teste usa um mock dela.
-- ✅ Paths como constantes privadas do repository, nunca na UI ou no Cubit.
-- ✅ Retorna model de domínio (`Order`), nunca `Response`, `Map` ou `DioException`.
-- ✅ Cache, quando existir, fica no repository (memória ou storage), de forma transparente para o Cubit.
-- ❌ Repository que depende de outro repository. Se precisa combinar, use um service de domínio ([01](01-arquitetura.md)).
+- ✅ Interface + implementation. The Cubit depends on the interface; the test uses a mock of it.
+- ✅ Paths as private constants of the repository, never in the UI or the Cubit.
+- ✅ Returns a domain model (`Order`), never `Response`, `Map` or `DioException`.
+- ✅ Caching, when it exists, lives in the repository (memory or storage), transparently to the Cubit.
+- ❌ A repository that depends on another repository. If you need to combine them, use a domain service ([01](01-architecture.md)).
 
 ---
 
 ## Models
 
-Parsing manual e **estrito**, como orienta a [skill oficial de serialização JSON](https://github.com/flutter/agent-plugins/tree/main/skills/flutter-implement-json-serialization): campos obrigatórios são validados com *pattern matching* e, se o contrato for quebrado, o parse lança `FormatException`. Sem codegen, para manter o build rápido e o mapeamento visível.
+Manual, **strict** parsing, as the [official JSON serialization skill](https://github.com/flutter/agent-plugins/tree/main/skills/flutter-implement-json-serialization) recommends: required fields are validated with *pattern matching* and, if the contract is broken, parsing throws `FormatException`. No codegen, to keep the build fast and the mapping visible.
 
 ```dart
 // features/orders/data/models/order.dart
@@ -347,22 +347,22 @@ final class Order extends Equatable {
           id: id,
           title: title,
           createdAt: DateTime.parse(createdAt),
-          // Opcionais e enums: tolerantes, com valor padrão explícito
+          // Optional fields and enums: tolerant, with an explicit default value
           status: OrderStatus.fromApi(json['status'] as String?),
           total: (json['total'] as num?)?.toDouble() ?? 0,
           notes: json['notes'] as String?,
         ),
-      // Não inclua o JSON na mensagem: pode conter dados pessoais
-      _ => throw const FormatException('Order: JSON fora do contrato'),
+      // Do not include the JSON in the message: it may contain personal data
+      _ => throw const FormatException('Order: JSON outside the contract'),
     };
   }
 
-  /// Função estática para poder ser usada com compute().
+  /// Static function so it can be used with compute().
   static List<Order> listFromJson(dynamic data) => switch (data) {
         {'items': final List<dynamic> items} => [
             for (final item in items) Order.fromJson(item as Map<String, dynamic>),
           ],
-        _ => throw const FormatException('Lista de Order fora do contrato'),
+        _ => throw const FormatException('Order list outside the contract'),
       };
 
   final String id;
@@ -398,20 +398,20 @@ enum OrderStatus {
 }
 ```
 
-### Por quê estrito
+### Why strict
 
-Um parse tolerante que troca um `id` ausente por `''` ou uma data inválida por `DateTime.now()` esconde a quebra de contrato: a tela mostra dado errado e ninguém fica sabendo. No modo estrito, a `FormatException` vira `UnexpectedFailure` no `safeCall`, a tela mostra o estado de erro e o problema aparece no Crashlytics.
+A tolerant parse that replaces a missing `id` with `''` or an invalid date with `DateTime.now()` hides the contract break: the screen shows wrong data and nobody finds out. In strict mode, the `FormatException` becomes an `UnexpectedFailure` in `safeCall`, the screen shows the error state and the problem shows up in Crashlytics.
 
-### Parsing em background
+### Background parsing
 
-Se converter a resposta leva mais que um frame (~16 ms), tipicamente listas com centenas de itens, use `compute()` com uma função top-level ou estática, como em `Order.listFromJson` acima. O `BackgroundTransformer` padrão do Dio já faz o `jsonDecode` de respostas grandes fora da thread principal; o `compute()` cobre a conversão para models.
+If converting the response takes longer than a frame (~16 ms), typically lists with hundreds of items, use `compute()` with a top-level or static function, as in `Order.listFromJson` above. Dio's default `BackgroundTransformer` already runs `jsonDecode` for large responses off the main thread; `compute()` covers the conversion into models.
 
-### Regras
+### Rules
 
-- ✅ Campos obrigatórios validados por *pattern matching*; contrato quebrado lança `FormatException`.
-- ✅ Tolerância só onde o contrato permite: campos opcionais (`as String?` com padrão explícito) e enums (`unknown`). O backend vai adicionar status novos, e o app não pode quebrar.
-- ✅ Model de **resposta** (`Order`) separado do model de **requisição** (`CreateOrderRequest`, só com `toJson`).
-- ✅ Nomes em Dart no padrão do app (`createdAt`), mesmo que o JSON use outro (`data_criacao`). O mapeamento fica só no `fromJson`/`toJson`.
-- ✅ Teste unitário de `fromJson`/`toJson` para cada model, incluindo um JSON fora do contrato.
-- ❌ Valor padrão silencioso para campo obrigatório (`?? ''`, `?? DateTime.now()`).
-- ❌ Lógica de exibição no model (`String get formattedTotal`). Use extensions na camada de UI.
+- ✅ Required fields validated by *pattern matching*; a broken contract throws `FormatException`.
+- ✅ Tolerance only where the contract allows it: optional fields (`as String?` with an explicit default) and enums (`unknown`). The backend will add new statuses, and the app must not break.
+- ✅ **Response** model (`Order`) separate from the **request** model (`CreateOrderRequest`, with `toJson` only).
+- ✅ Dart names follow the app's convention (`createdAt`), even if the JSON uses another (`creation_date`). The mapping lives only in `fromJson`/`toJson`.
+- ✅ Unit test for `fromJson`/`toJson` of each model, including a JSON outside the contract.
+- ❌ Silent default value for a required field (`?? ''`, `?? DateTime.now()`).
+- ❌ Display logic in the model (`String get formattedTotal`). Use extensions in the UI layer.

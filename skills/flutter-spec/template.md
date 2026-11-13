@@ -1,111 +1,111 @@
-# <Nome da feature>
+# <Feature name>
 
-> **Status:** rascunho | pronta
-> **Figma:** <link do arquivo/frame>
-> **Contrato da API:** <caminho do OpenAPI/JSON ou "colado na conversa">
-> **Data:** <AAAA-MM-DD> · **Autor:** <nome do git user.name>
+> **Status:** draft | ready
+> **Figma:** <file/frame link>
+> **API contract:** <path to the OpenAPI/JSON or "pasted in the conversation">
+> **Date:** <YYYY-MM-DD> · **Author:** <git user.name>
 
 <!--
-Regras deste template:
-- Mantenha os IDs (RF-xx, RN-xx, CA-xx) estáveis entre versões. Ao remover um item, risque-o em vez de renumerar.
-- A spec só fica "pronta" com a seção 11 vazia.
-- Nada de dados pessoais reais em exemplos (nomes, e-mails, CPF, telefones, endereços). Use valores fictícios.
-- A seção 7 descreve estrutura e nomes, não código.
-- Apague este comentário na spec final.
+Rules for this template:
+- Keep the IDs (FR-xx, BR-xx, AC-xx) stable across versions. When removing an item, strike it through instead of renumbering.
+- The spec is only "ready" with section 11 empty.
+- No real personal data in examples (names, emails, CPF, phone numbers, addresses). Use fictitious values.
+- Section 7 describes structure and names, not code.
+- Delete this comment in the final spec.
 -->
 
-## 1. Contexto e objetivo
+## 1. Context and goal
 
-<Por que a feature existe, para quem e qual problema resolve. 2 a 5 frases.>
+<Why the feature exists, for whom and what problem it solves. 2 to 5 sentences.>
 
-## 2. Fora do escopo
+## 2. Out of scope
 
-- <O que explicitamente não entra nesta entrega.>
+- <What is explicitly not part of this delivery.>
 
-## 3. Requisitos funcionais
+## 3. Functional requirements
 
-| ID | Requisito |
+| ID | Requirement |
 |---|---|
-| RF-01 | <O app deve ...> |
+| FR-01 | <The app must ...> |
 
-## 4. Regras de negócio
+## 4. Business rules
 
-| ID | Regra |
+| ID | Rule |
 |---|---|
-| RN-01 | <Ex.: o botão "Cancelar" só aparece quando `status == pending`.> |
+| BR-01 | <E.g.: the "Cancel" button only appears when `status == pending`.> |
 
-## 5. Telas e estados
+## 5. Screens and states
 
-### <Nome da tela> — [Figma](<link do node>)
+### <Screen name> — [Figma](<node link>)
 
-| Estado | O que o usuário vê | Origem |
+| State | What the user sees | Source |
 |---|---|---|
-| Carregando | <skeleton/spinner> | <node do Figma ou "padrão do design system"> |
-| Sucesso | <conteúdo> | |
-| Vazio | <mensagem + ação> | |
-| Erro | <`failure.userMessage` + botão "Tentar novamente"> | |
-| <Variação> | <ex.: pedido de retirada na loja> | |
+| Loading | <skeleton/spinner> | <Figma node or "design system default"> |
+| Success | <content> | |
+| Empty | <message + action> | |
+| Error | <`failure.userMessage` + "Try again" button> | |
+| <Variation> | <e.g.: in-store pickup order> | |
 
-**Componentes do design system:** <componentes e tokens usados, mapeados das variáveis do Figma.>
+**Design system components:** <components and tokens used, mapped from the Figma variables.>
 
-## 6. Navegação
+## 6. Navigation
 
-| Rota (`name`) | Path | Parâmetros obrigatórios (no path) | `extra` opcional |
+| Route (`name`) | Path | Required parameters (in the path) | Optional `extra` |
 |---|---|---|---|
-| `<orderDetail>` | `<:id>` (filha de `</orders>`) | `<id>` | <—> |
+| `<orderDetail>` | `<:id>` (child of `</orders>`) | `<id>` | <—> |
 
-- **Entrada:** <de onde se chega a esta tela>
-- **Saída:** <para onde se vai e o que acontece ao voltar>
-- **Deep link / push:** <tipo do payload e destino, ou "não se aplica">
+- **Entry:** <where this screen is reached from>
+- **Exit:** <where it goes and what happens on going back>
+- **Deep link / push:** <payload type and destination, or "not applicable">
 
-## 7. Desenho técnico
+## 7. Technical design
 
-Segue o guia `flutter-guidelines`. Pasta: `lib/features/<feature>/`.
+Follows the `flutter-guidelines` guide. Folder: `lib/features/<feature>/`.
 
 ### Models (`data/models/`)
 
-| Model | Campo | Tipo Dart | Obrigatório | Campo na API | Observação |
+| Model | Field | Dart type | Required | API field | Notes |
 |---|---|---|---|---|---|
-| `<Order>` | `<id>` | `String` | sim | `<id>` | |
+| `<Order>` | `<id>` | `String` | yes | `<id>` | |
 
 ### Repository (`data/repositories/`)
 
-| Método | Endpoint | Retorno | `Failure`s esperadas |
+| Method | Endpoint | Returns | Expected `Failure`s |
 |---|---|---|---|
 | `<getOrder(String id)>` | `<GET /orders/{id}>` | `<Future<Order>>` | `<NotFoundFailure, NetworkFailure, ...>` |
 
-### Cubit e State (`ui/view_models/`)
+### Cubit and State (`ui/view_models/`)
 
-- **State:** `status` (`initial`, `loading`, `success`, `failure`), <campos>, `Failure? failure`.
-- **Ações do Cubit:** `<load()>`, `<cancel()>` — todas via `handle(...)`.
+- **State:** `status` (`initial`, `loading`, `success`, `failure`), <fields>, `Failure? failure`.
+- **Cubit actions:** `<load()>`, `<cancel()>` — all via `handle(...)`.
 
 ### Widgets (`ui/widgets/`)
 
-- `<XxxScreen>` (lê o Cubit), `<XxxSection>` (lê o Cubit, mesma feature), <componentes puros>.
+- `<XxxScreen>` (reads the Cubit), `<XxxSection>` (reads the Cubit, same feature), <pure components>.
 
 ## 8. Analytics
 
-| Evento | Quando | Parâmetros |
+| Event | When | Parameters |
 |---|---|---|
-| `<order_detail_cancel_tap>` | <toque em "Cancelar"> | `<order_status>` |
+| `<order_detail_cancel_tap>` | <tap on "Cancel"> | `<order_status>` |
 
-> `screen_view` é automático pelo observer de navegação; não liste aqui.
+> `screen_view` is automatic via the navigation observer; do not list it here.
 
-## 9. Critérios de aceite
+## 9. Acceptance criteria
 
-| ID | Cenário | Referência |
+| ID | Scenario | Reference |
 |---|---|---|
-| CA-01 | **Dado** <contexto> **quando** <ação> **então** <resultado> | RF-01 |
+| AC-01 | **Given** <context> **when** <action> **then** <result> | FR-01 |
 
-## 10. Testes esperados
+## 10. Expected tests
 
-- **Models:** `fromJson` com JSON válido e com JSON fora do contrato (<campos>).
-- **Repository:** sucesso e cada `Failure` da seção 7.
-- **Cubit (`bloc_test`):** <sequências de estado por ação>.
-- **Widget:** <estados da seção 5 que precisam de teste>.
+- **Models:** `fromJson` with valid JSON and with JSON outside the contract (<fields>).
+- **Repository:** success and each `Failure` from section 7.
+- **Cubit (`bloc_test`):** <state sequences per action>.
+- **Widget:** <states from section 5 that need a test>.
 
-## 11. Perguntas em aberto
+## 11. Open questions
 
-| # | Pergunta | Suposição adotada |
+| # | Question | Assumption adopted |
 |---|---|---|
-| 1 | <pergunta> | <suposição, ou "nenhuma — bloqueia"> |
+| 1 | <question> | <assumption, or "none — blocking"> |

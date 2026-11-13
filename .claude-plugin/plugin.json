@@ -2,7 +2,7 @@
   "name": "flutter-agents",
   "displayName": "Flutter Agents",
   "version": "0.2.0",
-  "description": "Diretrizes de arquitetura Flutter da equipe e agentes do Claude Code que as aplicam (spec e desenvolvimento; code review e distribuição em breve). Usa as skills oficiais e o Dart MCP server do plugin dart-flutter.",
+  "description": "The team's Flutter architecture guidelines and Claude Code agents that apply them (spec and development; code review and distribution coming soon). Uses the official skills and the Dart MCP server from the dart-flutter plugin.",
   "author": {
     "name": "Pedro Kirstein"
   },

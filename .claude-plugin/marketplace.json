@@ -3,12 +3,12 @@
   "owner": {
     "name": "Pedro Kirstein"
   },
-  "description": "Marketplace interno da equipe mobile: diretrizes Flutter e agentes do Claude Code.",
+  "description": "Internal marketplace for the mobile team: Flutter guidelines and Claude Code agents.",
   "allowCrossMarketplaceDependenciesOn": ["dart-flutter"],
   "plugins": [
     {
       "name": "flutter-agents",
-      "description": "Diretrizes de arquitetura Flutter da equipe e agentes que as aplicam.",
+      "description": "The team's Flutter architecture guidelines and agents that apply them.",
       "category": "development",
       "tags": ["flutter", "dart", "guidelines"],
       "source": "./"
